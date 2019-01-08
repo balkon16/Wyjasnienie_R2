@@ -1,0 +1,154 @@
+---
+title: "Wyjaśnienie nt. $R^2$"
+author: "Paweł Lonca"
+date: "03.11.2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(knitr)
+library(tidyverse)
+```
+
+
+## Dane
+
+Załóżmy, że posiadamy następuje dane:
+
+```{r}
+set.seed(123)
+x <- c(1, 4, 3, 5, 6, 8, 7, 5, 10, 9, 9, 10, 15, 14, 12)
+y <- 1.5*x + rnorm(15, 0, 2)
+dane <- data.frame(y = y, x = x)
+plot(x,y)
+```
+
+Naszym zadaniem jest znalezienie związku między zmienną $x$ (`dane$x`), którą nazywamy niezależną, a zmienną $y$ (`dane$y`), którą nazywamy zależną. Zmienna niezależna jest podstawą do przewidzenia wartości zmiennej zależnej. Na początku warto zbadać czy występuje pomiędzy nimi (liniowa) współzależność. Okazuje się, że współczynnik korelacji liniowej Pearsona wynosi:
+```{r}
+cor(dane$x, dane$y)
+```
+
+### Metody 
+
+#### Pojedyncza wartość
+
+Jedną ze strategii rozwiązania problemu określania wartości zmiennej $y$ przez model byłoby podawanie za każdym razem jako odpowiedzi tej samej wartości zmiennej $y$. Może to być średnia, mediana, maksimum, minimum lub jakakolwiek inna pojedyncza wartość. Nie stosujemy dominanty, ponieważ zmienna $y$ jest ciągła. Dodajmy odpowiednie wartości do ramki danych:
+
+```{r}
+y_srednia <- rep(mean(dane$y), nrow(dane))
+y_mediana <- rep(median(dane$y), nrow(dane))
+y_max <- rep(max(dane$y), nrow(dane))
+y_min <- rep(min(dane$y), nrow(dane))
+y_los <- rep(42, nrow(dane))
+dane <- cbind(dane, y_srednia, y_mediana, y_max, y_min, y_los)
+kable(dane)
+```
+
+
+#### Zgadywanie
+
+Mówi się, że modele, które są uproszczeniami (lub idealizacjami) rzeczywistości zgadują wartość zmiennych zależnych. Idąc tym tropem niech model poproszony o określenie wartości $y$ podaje losową liczbę z rozkładu, który parametrami odpowiada rozkładowi zmiennej $y$. Jest to przypadek `y_zgaduj1`. Natomiat zmienna `y_zgaduj2` trzyma `r nrow(dane)` wartości z rozkładu $N(0,2)$. Jest to podejście inne w stosunku do poprzednich, ponieważ za każdym razem zwracana jest inna wartość:
+
+```{r}
+y_zgaduj1 <- rnorm(nrow(dane), mean(dane$y), sd(dane$y))
+y_zgaduj2 <- rnorm(nrow(dane), 0, 2)
+dane <- cbind(dane, y_zgaduj1, y_zgaduj2)
+kable(dane)
+```
+
+### Dokładność modelu 
+Chcąc obliczyć to jak model się myli w przewidywaniu zmiennej $y$ obliczamy sumę kwadratów różnic pomiędzy wartością zaobserwowaną $y_i$ (`dane$y`) a wartością zwróconą przez model $\hat{y}_i$ (np. `dane$y_zgaduj1`). Stosujemy kwadraty, ponieważ nie interesuje nas, w którą stronę model się pomylił, a większe bezwzględne pomyłki powinny być mocniej karane niż mniejsze bezwzględne pomyłki:
+
+<br><center>$\large{\sum_{i}^{n}{(y_i - \hat{y}_i)^2}}$, gdzie $n$ to liczba obserwacji</center><br>
+
+Zwróćmy szczególną uwagę na błąd modelu obliczony dla średniej, który dany jest wzorem:
+
+<br><center>$\large{\sum_i^n{(y_i - \bar{y})}}$, gdzie $\bar{y}$ to wartość średnia. </center><br>
+
+W definiowaniu $R^2$ jest to poziom wyjściowy błędu, czyli innymi słowy jak bardzo niedokładnie przewiduje model w jednym z najgorszych możliwych wypadków. Z tego powodu poprzedni wzór jest przypisywany do oddzielnej zmiennej:
+
+<br><center>$\large{SS_{total} = \sum_i^n{(y_i - \bar{y})}}$</center><br>
+
+$SS_{total}$ można przedstawić w następującej postaci:
+
+<br><center>$\large{\sum_i^n{(y_i - \hat{y}_i + \hat{y}_i - \bar{y})^2}}$</center><br>
+
+Zapisany w innej postaci:
+
+<br><center>$\large{SS_{total} = \sum_i^n ( y_i - \hat { y }_i ) ^ { 2 } + 2 * \sum_i^n ( y_i - \hat { y }_i ) ( \hat { y }_i - \overline { y }_i ) + \sum_i^n ( \hat { y }_i - \overline { y }_i ) ^ { 2 }}$</center><br>
+
+Gdy rozważamy model liniowy z wyrazem wolnym różnym od zera, zachodzi:
+
+<br><center>$\large{2 * \sum ( y_i - \hat { y }_i ) ( \hat { y }_i - \overline { y }_i ) = 0}$</center><br>
+
+co daje następującą postać całkowitego błędu modelu:
+
+<br><center>$\large{SS_{total}= \sum_i^n ( y_i - \hat { y }_i ) ^ { 2 } + \sum_i^n ( \hat { y }_i - \overline { y }_i ) ^ { 2 }}$</center><br>
+
+Zwróćmy uwagę na pierszy składnik, czyli $\sum_i^n ( y_i - \hat { y }_i ) ^ { 2 }$, który mówi nam jak (sumarycznie) przewidywania modelu są oddalone od rzeczywistych obserwacji. Wprowadźmy inny zapis tego składnika:
+
+<br><center>$\large{SS_{res} = \sum_i^n ( y_i - \hat { y }_i ) ^ { 2 } = \sum_i^n e _ { i } ^ { 2 }}$</center><br>
+
+Współczynnik $R^2$ możemy wtedy zdefiniować następująco:
+
+<br><center>$\large{R^2 = 1 - \frac{SS_{res}}{SS_{total}}}$</center><br>
+
+Sprawdźmy ile wynosi błąd modelu zdefiniownay jako $SS_{total}$:
+
+```{r}
+(SS_tot <- sum((dane$y - dane$y_srednia)^2))
+```
+
+Dla pozostałych dotychczas uzyskanych modeli (które są de facto pojedynczą wartością poza `dane$y_zgaduj1` i `dane$y_zgaduj2`) liczymy $SS_{res}$:
+
+```{r}
+errors <- lapply(dane[, 4:ncol(dane)], FUN = function(x){sum(dane$y - x)^2})
+names(errors) <- errors %>% names() %>% lapply(function(x){gsub("y_", "blad_", x)})
+errors
+```
+
+Biorąc pod uwagę podany wcześniej wzór na $R^2$ możemy spodziewać się wartości 1, w sytuacji idealnego dopasowania, natomiast wartości równej 0, gdy model popełnia (wartościowo) tyle samo błędów co przewidywanie średnią. Jednak błędy dla niektórych modeli są wyższe od wartości `r SS_tot`, co oznacza, że możemy spodziewać się $R^2$ mniejszego od zera:
+
+```{r}
+R_kwadrat <- lapply(errors, FUN=function(x){1-x/SS_tot})
+R_kwadrat
+```
+
+$R^2$ osiąga wartości poniżej zera w następujących przypadkach: model przewiduje jedną arbitralnie wybraną przez nas wartość jak w `dane$y_los` (tutaj `r y_los[1]`), model zawsze przewiduje maksymalną lub minimalną wartość `dane$y` oraz gdy model losowo wybiera wartość z $N(0,2)$. Ujemna wartość $R^2$ może wystąpić i jej zadaniem jest informowanie osoby przeprowadzającej analizę, że wybrała niewłaściwy model, czyli taki, który radzi sobie gorzej w przewidywaniu niż model oparty na średniej.
+
+
+### Zmienna niezależna
+
+W zadaniu przewidywania wartości zmiennej $y$ może pomóc zmienna niezależna $x$, z którą zmienna zależna jest skorelowana. Tworzymy model liniowy:
+```{r}
+model_liniowy <- lm(y ~ x, data = dane)
+```
+
+który dany jest równaniem:
+
+<br><center>$$y_i = `r round(model_liniowy$coefficients[[1]], 2)` + `r round(model_liniowy$coefficients[[2]], 2)` x_i$$</center><br>
+
+Błąd $SS_{res}$ w przypadku modelu liniowego wynosi odpowiednio:
+```{r}
+(SS_res_lm <- sum((dane$y - model_liniowy$fitted.values)^2))
+```
+
+natomiast $R^2$ wynosi:
+```{r}
+1 - SS_res_lm/SS_tot
+```
+
+Wartość $R^2$ dla tego modelu liniowego jest bliska 1, ale zastanówmy się kiedy $R^2$ może wynieść 1 (lub przekroczyć tą wartość). Aby osiągnąć 1 model musi przewidywać dokładnie te wartości, które zaszły w rzeczywistości. Wtedy suma kwadratów $SS_{res}$ będzie równa 0. W przypadku zestawu `dane` jest to niemożliwe ze względu na sposób w jaki wygenerowane są wartości $y$:
+
+<br><center>$y_i = 1.5x_i + \epsilon_i$, gdzie $\epsilon_i$ pochodzi z rozkładu $N(0,2)$.</center><br>
+
+Wartość $R^2$ nie może być większa od 1, ponieważ ułamek $\large{\frac{SS_{res}}{SS_{total}}}$ musiałby być ujemny. Jest to niemożliwe ponieważ zarówno w liczniku jak i mianowniku są sumy kwadratów.
+
+### Podsumowanie
+
+Wartość $R^2$ nie może przekroczyć 1. Kwestia tego czy ten współczynnik może być mniejszy od zera zależy od tego w jaki sposób zdefiniujemy najgorszy z możliwych modeli. Przyjęło się, że najgorszy możliwy model to taki zawsze zwracający średnią zmiennej zależnej. W powyższej analizie sprawdziliśmy inne nierozsądne modele i okazuje się, że są jeszcze gorsze od modelu ze średnią. Najgorzej wypadł  *`r names(unlist(errors)[which.max(unlist(errors))])`* z błędem `r format(unlist(errors)[which.max(unlist(errors))][[1]], scientific=FALSE)`. Gdybyśmy policzyli $SS_{tot}$ według tego modelu to nie otrzymalibyśmy wartości $R^2$ mniejszej od zera.
+
